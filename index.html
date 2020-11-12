@@ -1,76 +1,71 @@
 <!DOCTYPE html>
 
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>:: 다음 주소록 API ::</title>
-<script type="text/JavaScript" src="http://code.jquery.com/jquery-1.7.min.js"></script>
-<script type="text/JavaScript" src="http://dmaps.daum.net/map_js_init/postcode.v2.js"></script>
-<script type="text/javascript">
-    function openDaumZipAddress() {
+<html lang="ko">
+  <head>
+    <title>주소 찾기</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0"/>
+  </head>
+  <body onload="execDaumPostcode()">
+  <div id = "layer" style = "display:block; position:absolute; overflow:hidden; z-index:1; -webkit-overflow-scrolling:touch; ">
+  </div>
+  <script src="https://spi.maps.daum.net/imap/map_js_init/postcode.v2.js"></script>
+  <script>
+    window.addEventListener("message", onReceivedPostMessage, false);
 
-        // 우편번호 찾기 화면을 넣을 element를 지정
-        var element_wrap = document.getElementById("wrap");
-
-        // wrap 레이어가 off된 상태라면 다음 우편번호 레이어를 open 한다.
-        if(jQuery("#wrap").css("display") == "none") {
-            new daum.Postcode({
-                oncomplete:function(data) {
-                    jQuery("#zonecode").val(data.zonecode);
-                    jQuery("#address").val(data.address);
-                    jQuery("#address_detail").focus();
-                    console.log(data);
-                }
-
-                // 사용자가 값을 주소를 선택해서 레이어를 닫을 경우
-                // 다음 주소록 레이어를 완전히 종료 시킨다.
-                , onclose:function(state) {
-                    if(state === "COMPLETE_CLOSE") {
-
-                        // 콜백함수를 실행하여 슬라이드 업 기능이 실행 완료후 작업을 진행한다.
-                        offDaumZipAddress(function() {
-                            element_wrap.style.display = "none";
-                        });
-                    }
-                }
-            }).embed(element_wrap);
-
-            // 슬라이드 다운 기능을 이용해 레이어 창을 오픈한다.
-            jQuery("#wrap").slideDown();
-        }
-        
-        // warp 레이어가 open된 상태라면 다음 우편번호 레이어를 off 상태로 변경한다.
-        else {
-
-            // 콜백함수를 실행하여 슬라이드 업 기능이 실행 완료후 작업을 진행한다.
-            offDaumZipAddress(function() {
-                element_wrap.style.display = "none";
-                return false;
-            });
-        }
+    function onReceivedPostMessage(event){
+      //..ex deconstruct event into action & params
+      var action = event.data.action;
+      var params = event.data.params;
+      console.log("onReceivedPostMessage "+event);
     }
 
-    function offDaumZipAddress() {
-
-
-
-        // 슬라이드 업 기능을 이용해 레이어 창을 닫는다.
-        jQuery("#wrap").slideUp();
-
+    function onReceivedActivityMessageViaJavascriptInterface(json){
+      //..ex deconstruct data into action & params
+      var data = JSON.parse(json);
+      var action = data.action;
+      var params = data.params;
+      console.log("onReceivedActivityMessageViaJavascriptInterface "+event);
     }
 
-</script>
-</head>
-<body>
-    <input id="zonecode" type="text" value="" style="width:50px;" readOnly/>
-    &nbsp;
-    <input type="button" onClick="openDaumZipAddress();" value = "주소 찾기"/>
+    function postMessageToiOS(postData) {
+        window.webkit.messageHandlers.callBackHandler.postMessage(postData);
+    }
 
-    <!-- 다음 우편번호 찾기 리스트를 띄울 영역을 지정 -->
+    var element_layer = document.getElementById('layer');
+    function execDaumPostcode() {
+      new daum.Postcode({
+        oncomplete: function(data) {
+          var jibunAddress = ""
 
-    <div id="wrap" style="display:none;border:1px solid #DDDDDD;width:500px;margin-top:5px"></div>
-    <div style="height:10px;"></div>
-    <input type="text" id="address" value="" style="width:240px;" readOnly/>
-    <input type="text" id="address_detail" value="" style="width:200px;"/>
-</body>
+          if (data.jibunAddress == "") {
+            jibunAddress = data.autoJibunAddress
+          } else if (data.autoJibunAddress == "") {
+            jibunAddress = data.jibunAddress
+          }
+
+          var postData = {
+              roadAddress : data.roadAddress,
+              jibunAddress : jibunAddress,
+              zonecode : data.zonecode
+          };
+          window.postMessageToiOS(postData);
+        },
+        width : '100%',
+        height : '100%'
+      }).embed(element_layer);
+      element_layer.style.display = 'block';
+      initLayerPosition();
+    }
+
+    function initLayerPosition(){
+      var width = (window.innerWidth || document.documentElement.clientWidth);
+      var height = (window.innerHeight || document.documentElement.clientHeight);
+      element_layer.style.width = width + 'px';
+      element_layer.style.height = height + 'px';
+      element_layer.style.left = (((window.innerWidth || document.documentElement.clientWidth) - width)/2) + 'px';
+      element_layer.style.top = (((window.innerHeight || document.documentElement.clientHeight) - height)/2) + 'px';
+    }
+  </script>
+  </body>
 </html>
